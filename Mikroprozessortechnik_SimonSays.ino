@@ -6,15 +6,32 @@
 /////////////////////////////////////////////////////////////
  */
 
-//Uebung_01: Stammdaten
-
 
 /*=========================================================
 Description: einfaches Blink-Signal auf internes LED Platine
 Author: M. Mühlethaler copy from C. Meier
-Date: 21.10.2024
-Version: V01.00.00
+Date: 17.11.2024
+Version: V01.01.00
 =========================================================*/
+
+/*=========================================================
+Updates in this Version:
+-Funktionierende Wiederholungsprüfung des Players
+-Funktionierendes Levelspringen
+-Restart wenn verloren
+=========================================================*/
+
+
+/*=========================================================
+ToDo:
+- Button debouncer (Button können teilweise nicht gedrückt werden wegen dem Delay, muss mit Millis gelöst werden)
+- Startmelodie
+- Fehler Melodie
+- Level Up Melodie
+- Display mit Levelanzeige
+- Evtl. Display mit Motivationssprüchen
+=========================================================*/ 
+
 
 #include "arduino_config.h"
 #include "noten.h"
@@ -49,35 +66,43 @@ void loop() {
 void checkButtonPressed() {
   if (!comPlaying) {
     for (int i = 0; i < (sizeof(buttonPins) / sizeof(buttonPins[0])); i++) {  //Für alle Buttons
-      if (digitalRead(buttonPins[i]) == HIGH) { //Wenn Button gedrückt
+      if (digitalRead(buttonPins[i]) == HIGH) {                               //Wenn Button gedrückt
         digitalWrite(ledPins[i], HIGH);
         playTone(buttonTones[i]);
         playerSays[guess] = i;  //Füge dem Array playerSays die Gedrückte Taste hinzu
         Serial.print("PlayerSays: ");
         Serial.println(playerSays[guess]);
-        Serial.print("SimonSays: ");
-        Serial.println(simonSays[guess]);
-        Serial.print("guess: ");
-        Serial.println(guess);
-        Serial.print("level: ");
-        Serial.println(level);
-        guess++; // Irgendwo hier ist noch ein Fehler!!!! Sagt zu früh gewonnen!
-        if (playerSays[guess-1] = simonSays[guess-1]){
-          if (guess == level){
-          level++;
-          Serial.println("gewonnen");
-          delay(2000);
-          comPlaying = true;
-          simonPlays();
-          guess = 0;
+        // Irgendwo hier ist noch ein Fehler!!!! Sagt zu früh gewonnen!
+        delay(500);
+        digitalWrite(ledPins[i], LOW);
+        delay(1000);
+        if (playerSays[guess] == simonSays[guess] == 1) {  //Abfrage ob der Schritt richtig war
+          guess++;
+          Serial.println("Gut geraten");
+          if (guess == level) { //Abrage ob die richtige Anzahl an Schritten erreicht wurde
+            // Ja -> Next Level
+            Serial.println("  Next Level  ");
+            guess = 0;
+            level++;
+            comPlaying = true;
+            delay(2000);
+            playerSays[100] = {};
+            simonPlays();
+          } else {
+
+            //Nein -> Warten auf weitere Eingabe
+            Serial.println("Weiter gehts");
           }
-        }
-        else{
+        } else {
           Serial.println("verloren");
           guess = 0;
-          level  = 0;
+          level = 1;
+          playerSays[100] = {};
+          simonSays[100] = {};
+          startup = true;
+
         }
-        
+
         //Seriellausgabe zum testen ob das Array korrekt befüllt wird
         /*for(int i = 0; i <= guess; i++)
 {
@@ -95,21 +120,30 @@ void checkButtonPressed() {
 }
 
 void playTone(int note) {
-  tone(buzzer, note, 400);
+  //tone(buzzer, note, 400);
 }
 
 void simonPlays() {
   if (comPlaying) {
-    int nextOne = random(0,4);
-    simonSays[level-1] = nextOne;
+    int nextOne = random(0, 4);
+    simonSays[level - 1] = nextOne;
     Serial.print("SimonSays: ");
-    Serial.println(nextOne);
-    for (int i = 0; i <= level-1; i++) {
+    for (int i = 0; i < level; i++) {
+      Serial.print(simonSays[i]);
+      Serial.print(" : ");
+    }
+    Serial.println();
+    for (int i = 0; i < level; i++) {
+      Serial.print("LED AN: ");
+      Serial.println(simonSays[i]);
       digitalWrite(ledPins[simonSays[i]], HIGH);
       playTone(buttonTones[simonSays[i]]);
       comPlaying = false;
       delay(simonSpeed);
       digitalWrite(ledPins[simonSays[i]], LOW);
+      Serial.print("LED AUS: ");
+      Serial.println(simonSays[i]);
+      delay(simonSpeed);
     }
   }
 }
@@ -119,7 +153,6 @@ void startupSeq() {
     delay(2000);
     Serial.println("Startup");
     startup = false;
+    comPlaying = true;
   }
 }
-
-
