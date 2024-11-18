@@ -11,14 +11,12 @@
 Description: einfaches Blink-Signal auf internes LED Platine
 Author: M. Mühlethaler copy from C. Meier
 Date: 17.11.2024
-Version: V01.01.00
+Version: V01.02.00
 =========================================================*/
 
 /*=========================================================
 Updates in this Version:
--Funktionierende Wiederholungsprüfung des Players
--Funktionierendes Levelspringen
--Restart wenn verloren
+-Buttons ohne Widerstand Umverkabelung auf Board, Abfrage mit LOW statt High)
 =========================================================*/
 
 
@@ -57,6 +55,7 @@ void setup() {
 }
 
 void loop() {
+  comPlaying = false;
   startupSeq();
   simonPlays();
   checkButtonPressed();
@@ -66,7 +65,8 @@ void loop() {
 void checkButtonPressed() {
   if (!comPlaying) {
     for (int i = 0; i < (sizeof(buttonPins) / sizeof(buttonPins[0])); i++) {  //Für alle Buttons
-      if (digitalRead(buttonPins[i]) == HIGH) {                               //Wenn Button gedrückt
+      if (digitalRead(buttonPins[i]) == LOW) {  
+        Serial.print("Buttonpressed ");                             //Wenn Button gedrückt
         digitalWrite(ledPins[i], HIGH);
         playTone(buttonTones[i]);
         playerSays[guess] = i;  //Füge dem Array playerSays die Gedrückte Taste hinzu
@@ -143,7 +143,7 @@ void simonPlays() {
       digitalWrite(ledPins[simonSays[i]], LOW);
       Serial.print("LED AUS: ");
       Serial.println(simonSays[i]);
-      delay(simonSpeed);
+      delay(500);
     }
   }
 }
