@@ -28,9 +28,12 @@ const int led4 = 33;
 const int buzzer = 48;
 
 //Tones and lights
-const int buttonTones[] = {NOTE_E4, NOTE_E5, NOTE_A5, NOTE_B5};
-const int startupTones[] = {NOTE_E4, NOTE_E5, NOTE_A5, NOTE_B5};
-const int startupLights[] = {1,2,3,4};
+const int buttonTones[] = {NOTE_C4, NOTE_F4, NOTE_G4, NOTE_E4};
+
+//Millis
+unsigned long currentMillis;
+unsigned long buttonMillis;
+const unsigned long buttonPeriod = 10;
 
 
 //Spielvariablen
@@ -40,7 +43,15 @@ int guess = 0;
 int level = 1;
 int simonSays[100] ={};
 int playerSays[100] = {};
-int simonSpeed = 1000; //Delay zwischen den Schritten von Simon
+int simonSpeed = 800; //Delay zwischen den Schritten von Simon
 
 //Hardware
 int ledTime = 400; //Millisekunden wie lange die LED leuchten soll
+
+//Sounds
+int startupTones[] = {NOTE_C4, NOTE_F4, NOTE_C4, NOTE_F4, NOTE_C4, NOTE_F4, NOTE_C4, NOTE_F4, NOTE_G4, NOTE_F4, NOTE_E4, NOTE_F4, NOTE_G4};
+int startupTonesDuration[] = {100, 200, 100, 200, 100, 400, 100, 100, 100, 100, 200, 100, 500};
+int winningTones[] = {NOTE_C4, NOTE_C4, NOTE_G4, NOTE_C5, NOTE_G4, NOTE_C5};
+int winningTonesDuration[] = {100, 100, 100, 300, 100, 300};
+int losingTones[] = {NOTE_G3, NOTE_C3,NOTE_G3, NOTE_C3,NOTE_G3, NOTE_C3};
+int losingTonesDuration[] = {300, 300,300, 300,300, 300};
