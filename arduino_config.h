@@ -40,13 +40,11 @@ const unsigned long buttonPeriod = 10;
 bool startup = true;
 bool comPlaying = true; 
 int guess = 0;
-int level = 1;
 int simonSays[100] ={};
-int playerSays[100] = {};
-int simonSpeed = 800; //Delay zwischen den Schritten von Simon
+bool multiPlayer = false;
+bool playerOne = false;
+int record = 0;
 
-//Hardware
-int ledTime = 400; //Millisekunden wie lange die LED leuchten soll
 
 //Sounds
 int startupTones[] = {NOTE_C4, NOTE_F4, NOTE_C4, NOTE_F4, NOTE_C4, NOTE_F4, NOTE_C4, NOTE_F4, NOTE_G4, NOTE_F4, NOTE_E4, NOTE_F4, NOTE_G4};
