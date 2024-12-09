@@ -1,5 +1,3 @@
-
-
 /*
     /////////////////////////////////////////////////////////////
    //														                              //
@@ -13,20 +11,18 @@
 Description: einfaches Blink-Signal auf internes LED Platine
 Author: M. Mühlethaler copy from C. Meier
 Date: 09.12.2024
-Version: V02.00.00
+Version: V02.01.00
 =========================================================*/
 
 /*=========================================================
 Updates in this Version:
--Multiplayer funktionstüchtig
--Einstellungen Helligkeit, Lautstärke und Speed möglich
+- Ausgabe Einstellungswert auf Display
 
 =========================================================*/
 
 
 /*=========================================================
 ToDo:
-- Ausgabe Einstellungswert auf Display
 =========================================================*/
 
 #include "arduino_config.h"
@@ -73,32 +69,30 @@ void setup() {
 }
 
 void printLCD(String lcdLine1, String lcdLine2 = "none") {
-  if ((oldLcdLine1 != lcdLine1) || oldLcdLine2 != lcdLine2) {
-
+  if ((oldLcdLine1 != lcdLine1) || (oldLcdLine2 != lcdLine2)) {
+       Serial.print("PrintLCD lcdline ");
+   Serial.println(lcdLine2);
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print(lcdLine1);
     lcd.setCursor(0, 1);
+    
     oldLcdLine1 = lcdLine1;
     oldLcdLine2 = lcdLine2;
     if (lcdLine2 == "none") {
+
       lcd.print("Lvl ");
       lcd.print(guess);
       lcd.print("     Rec ");
       if (record > 0) {
         lcd.print(record);
       }
+    } else {
+      lcd.print(lcdLine2);
     }
-  } else lcd.print(lcdLine2);
+  } 
 }
 
-void test(String lcdLine1, String lcdLine2 = "none") {
-  Serial.println(lcdLine1);
-  Serial.println(lcdLine2);
-  if (lcdLine2 == "none") {
-    Serial.print("funktioniert");
-  }
-}
 
 void loop() {
 
@@ -140,14 +134,10 @@ byte readButtons() {
       byte buttonPin = buttonPins[i];
       if (digitalRead(buttonPin) == LOW) {
         if (buttonPin == bPlayMode) {
-          Serial.println("enteringSettings");
           settings(buttonPin);
-          Serial.println("ReadButtons verlassen");
           return;
         } else if (buttonPin == bRotary) {
-          Serial.println("enteringSettings");
           settings(buttonPin);
-          Serial.println("ReadButtons verlassen");
           printPlayerStatus();
         }
 
@@ -163,23 +153,16 @@ byte readButtons() {
 
 
 bool checkUserSequence() {
-  Serial.print("SettingsMade: ");
-  Serial.println(settingsMade);
-
 
   printPlayerStatus();
-
 
   for (int i = 0; i < guess; i++) {
     byte actualButton = readButtons();
     Serial.println(actualButton);
     byte expectedButton = simonSays[i];
-    Serial.println(actualButton);
-    Serial.println(actualButton);
-    Serial.println("  Where do You play?");
     if (!settingsMade) {
       toneLED(actualButton);
-      delay(100);
+      delay(150);
     }
     if (expectedButton != actualButton) {
       return false;
@@ -187,7 +170,7 @@ bool checkUserSequence() {
     }
   }
   if (!settingsMade) {
-  printLCD("Cool!");
+    printLCD("Cool!","");
   }
   return true;
 }
@@ -253,7 +236,8 @@ void rotary() {
   currentMillis = millis();
   rotaryMillis = millis();
   while (currentMillis - rotaryMillis < rotaryPeriod) {
-    printLCD(actSetText[actSetNr], "");
+    sprintf(settingValue, "%d %%", rotaryNewPos[actSetNr]);
+    printLCD(actSetText[actSetNr], settingValue);
     currentMillis = millis();
     encoder.tick();
     if (digitalRead(bRotary) == LOW) {
@@ -262,7 +246,7 @@ void rotary() {
       if (actSetNr < 3) {
         actSetNr++;
         if (actSetNr == 1) {
-          toneAC(NOTE_F4, rotaryNewPos[1], 200);
+          toneAC(NOTE_F4, volume, 200);
         }
         if (actSetNr == 2) {
           testSpeed = true;
@@ -301,8 +285,10 @@ void rotary() {
       Serial.println();
       Serial.println(currentMillis - rotaryMillis);
       (rotaryLastPos[actSetNr] = rotaryNewPos[actSetNr]);
+
+
       if (actSetNr == 1) {
-        toneAC(NOTE_F4, rotaryNewPos[1], 200);
+        toneAC(NOTE_F4, volume, 200);
       }
       if (actSetNr == 2) {
         simonSpeed = -2.5 * rotaryNewPos[2] + 300;
@@ -311,12 +297,16 @@ void rotary() {
       }
     }
     if (actSetNr == 0) {
+      brightness = 2 * rotaryNewPos[0];
+      Serial.println(rotaryNewPos[0]);
+      Serial.println(brightness);
       noTone(buzzer);
       allLED(true);
       // printLCD(actSetText[actSetNr], "");
     }
 
     if (actSetNr == 1) {
+      volume = 0.1* (rotaryNewPos[1]-1);
       allLED(false);
       //printLCD(actSetText[actSetNr], "");
     }
@@ -360,8 +350,8 @@ void changePlayerMode() {
 void toneLED(int button) {
   Serial.println(simonSpeed);
   Serial.println(" Speed in toneLED");
-  analogWrite(ledPins[button], rotaryNewPos[0]);
-  toneAC(buttonTones[button], rotaryNewPos[1]);
+  analogWrite(ledPins[button], brightness);
+  toneAC(buttonTones[button], volume);
   delay(simonSpeed);
   noTone(buzzer);
   digitalWrite(ledPins[button], LOW);
@@ -388,20 +378,20 @@ void startupSeq() {
     printLCD("Game starting", "");
     for (int thisNote = 0; thisNote < 13; thisNote++) {  // Ton und LED Sequenz
       // play the next note:
-      toneAC(startupTones[thisNote], rotaryNewPos[1]);
+      toneAC(startupTones[thisNote], volume);
       //tone(buzzer, (startupTones[thisNote]));
 
       if (thisNote == 0 || thisNote == 2 || thisNote == 4 || thisNote == 6) {
-        analogWrite(led1, rotaryNewPos[0]);
+        analogWrite(led1, brightness);
       }
       if (thisNote == 1 || thisNote == 3 || thisNote == 5 || thisNote == 7 || thisNote == 9 || thisNote == 11) {
-        analogWrite(led2, rotaryNewPos[0]);
+        analogWrite(led2, brightness);
       }
       if (thisNote == 8 || thisNote == 12) {
-        analogWrite(led3, rotaryNewPos[0]);
+        analogWrite(led3, brightness);
       }
       if (thisNote == 10) {
-        analogWrite(led4, rotaryNewPos[0]);
+        analogWrite(led4, brightness);
       }
       // hold the note:
       delay(startupTonesDuration[thisNote]);
@@ -423,7 +413,7 @@ void startupSeq() {
 void allLED(bool on) {
   if (on) {
     for (int i = 0; i < 4; i++) {
-      analogWrite(ledPins[i], rotaryNewPos[0]);
+      analogWrite(ledPins[i], brightness);
     }
   } else {
     for (int i = 0; i < 4; i++) {
@@ -436,7 +426,7 @@ void allLED(bool on) {
 
 void losing() {
   //Wird gespielt wenn verloren
-
+Serial.println(multiPlayer);
   if (multiPlayer) {
 
     if (guess % 2 == 0) {
@@ -447,12 +437,11 @@ void losing() {
 
   } else {
     printLCD("Game Over", "");
-    Serial.println("multi check");
   }
   for (int thisNote = 0; thisNote < 6; thisNote++) {  //Flashes lights for failure
 
     allLED(true);
-    toneAC(losingTones[thisNote], rotaryNewPos[1]);
+    toneAC(losingTones[thisNote], volume);
     //tone(buzzer, (losingTones[thisNote]), losingTonesDuration[thisNote]);
     delay(losingTonesDuration[thisNote] / 2 - 50);
     allLED(false);
@@ -468,7 +457,7 @@ void winning() {  // Wird gespielt wenn Game gewonnen
   for (int thisNote = 0; thisNote < 6; thisNote++) {
     allLED(true);
     // play the next note:
-    toneAC(winningTones[thisNote], rotaryNewPos[1]);
+    toneAC(winningTones[thisNote], volume);
     //tone(buzzer, (winningTones[thisNote]));
     // hold the note:
     delay(winningTonesDuration[thisNote]);

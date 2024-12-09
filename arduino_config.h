@@ -1,11 +1,8 @@
-//Uebung_01: Stammdaten
-
-
 /*=========================================================
-Description: Stammdaten: einfaches Blink-Signal auf internes LED Platine
-Author: M. Mühlethaler copy from C. Meier
-Date: 21.10.2024
-Version: V01.00.00
+Description: Stammdaten: Simon Says Game Mikroprozessortechnik
+Author: M. Mühlethaler
+Date: 09.12.2024
+Version: V02.01.00
 =========================================================*/
 #include "noten.h"
 
@@ -32,7 +29,7 @@ const int led3 = 5;
 const int led4 = 6;
 
 //PIN Belegung Buzzer
-const int buzzer = 40;
+const int buzzer = 11;
 
 //Tones and lights
 const int buttonTones[] = {NOTE_C4, NOTE_F4, NOTE_G4, NOTE_E4};
@@ -60,18 +57,22 @@ bool settingsMade = false;
 
 //Settings
 // Rotary LED / Speaker / Speed
-int rotarySteps[] = { 4, 1, 5 };
+int rotarySteps[] = { 2, 10, 5 };
 int rotaryMin[] = { 0, 0, 0 };
-int rotaryMax[] = { 255, 9, 100 };
-int rotaryNewPos[] = { 110, 5, 0 };
-int rotaryLastPos[] = { 110, 5, 0 };
+int rotaryMax[] = { 100, 100, 100 };
+int rotaryNewPos[] = { 50, 60, 0 };
+int rotaryLastPos[] = { 0, 60, 0 };
 int actSetNr = 0;
+
+int brightness = 2 * rotaryNewPos[0];
+int volume = 0.1* (rotaryNewPos[1]-1);
 int simonSpeed = -2.5*rotaryNewPos[2]+300;
 bool testSpeed = false;
 String  oldLcdLine1 = "";
 String  oldLcdLine2 = "";
+char settingValue[15];
 
-String actSetText[] = {"Helligkeit", "Lautstärke", "Speed"};
+String actSetText[] = {"Helligkeit", "Volume", "Speed"};
 
 
 
