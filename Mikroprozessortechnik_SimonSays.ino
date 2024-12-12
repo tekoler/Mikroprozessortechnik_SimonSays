@@ -8,30 +8,21 @@
 
 
 /*=========================================================
-Description: einfaches Blink-Signal auf internes LED Platine
-Author: M. Mühlethaler copy from C. Meier
-Date: 09.12.2024
-Version: V02.01.00
-=========================================================*/
-
-/*=========================================================
-Updates in this Version:
-- Ausgabe Einstellungswert auf Display
-
+Description: SimonSays Game
+Author: M. Mühlethaler
+Date: 12.12.2024
+Version: V02.02.00
 =========================================================*/
 
 
-/*=========================================================
-ToDo:
-=========================================================*/
 
 #include "arduino_config.h"
 #include "noten.h"
 #include <LiquidCrystal_I2C.h>
 #include <RotaryEncoder.h>
-#include "Volume3.h"
 #include <toneAC.h>
 
+//LCD Settings
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Setup a RotaryEncoder with 2 steps per latch for the 2 signal input pins:
@@ -40,7 +31,7 @@ RotaryEncoder encoder(rotPin1, rotPin2, RotaryEncoder::LatchMode::TWO03);
 
 
 void setup() {
-  //Serielle Schnittstelle aktivieren
+  //Activate serial Output
   Serial.begin(9600);
   //Define pinModes Buttons
   pinMode(b1, INPUT_PULLUP);
@@ -58,6 +49,8 @@ void setup() {
 
   //Define pinModes Buzzer
   pinMode(buzzer, OUTPUT);
+
+  //Used to have a real random
   randomSeed(analogRead(0));
 
   //Define LCD
@@ -68,6 +61,8 @@ void setup() {
   encoder.setPosition(rotaryNewPos[actSetNr] / rotarySteps[actSetNr]);
 }
 
+// LCD Main updating function used for printing Line 1 and 2 (only when there is an update)
+// If Line 2 is not submitted print avtual Level/Record 
 void printLCD(String lcdLine1, String lcdLine2 = "none") {
   if ((oldLcdLine1 != lcdLine1) || (oldLcdLine2 != lcdLine2)) {
        Serial.print("PrintLCD lcdline ");
@@ -96,22 +91,22 @@ void printLCD(String lcdLine1, String lcdLine2 = "none") {
 
 void loop() {
 
-  settingsMade = false;
+  playerModeChanged = false;
   currentMillis = millis();
+
+  //Set a random Value for the actual level to be played from Simon
   simonSays[guess] = random(0, 4);
 
-
-  //startupSeq();
+  startupSeq();
   guess++;
-  Serial.println("nextRound");
   simonPlays();
 
   if (!checkUserSequence()) {
-    if (!settingsMade) {
+    if (!playerModeChanged) {  
       losing();
     }
+    startup = true;
   }
-
 
   if (record < guess) {
     record = guess;
@@ -124,8 +119,11 @@ void loop() {
   }
 }
 
+//Check if and which Button was pressed
 byte readButtons() {
-  if (settingsMade) {
+  Serial.println("User input requested");
+  //If Playermode was changed restart required, therfore return
+  if (playerModeChanged) {
     return;
   }
   while (true) {
@@ -151,30 +149,27 @@ byte readButtons() {
   }
 }
 
-
+//checking if user entered sequence is correct
 bool checkUserSequence() {
 
   printPlayerStatus();
 
   for (int i = 0; i < guess; i++) {
     byte actualButton = readButtons();
-    Serial.println(actualButton);
     byte expectedButton = simonSays[i];
-    if (!settingsMade) {
+    if (!playerModeChanged) {
       toneLED(actualButton);
       delay(150);
     }
     if (expectedButton != actualButton) {
       return false;
-      Serial.println("Verloren");
+      Serial.println("Game Over");
     }
-  }
-  if (!settingsMade) {
-    printLCD("Cool!","");
   }
   return true;
 }
 
+//helping function for printing difference between Multiplayer and Singleplayer
 void printPlayerStatus() {
   if (multiPlayer) {
     if (guess % 2 == 0) {
@@ -189,6 +184,7 @@ void printPlayerStatus() {
   }
 }
 
+//function for the settings menu
 void settings(int button) {
   if (button == bRotary) {
     Serial.println("SettingsRotary");
@@ -197,13 +193,12 @@ void settings(int button) {
     return;
   }
   if (button == bPlayMode) {
-    settingsMade = true;
+    playerModeChanged = true;
     currentMillis = millis();
     bPlayModeMillis = millis();
     changePlayerMode();
     Serial.println("timer updated");
     Serial.println(currentMillis - bPlayModeMillis);
-
     while (currentMillis - bPlayModeMillis < bPlayModePeriod) {
       currentMillis = millis();
       if (digitalRead(bPlayMode) == LOW) {
@@ -212,26 +207,17 @@ void settings(int button) {
       delay(30);
       Serial.println("inSchleife");
     }
-
     guess = 0;
-
-
     Serial.println("Settings verlassen");
     return;
   }
-
-
-
-
   delay(5000);
 }
 
-void displaySetting() {
-}
-
+//Navigation and changing values with the rotary Button
+//Millis is always used to have a timer to wait for more user input and to return if not
 void rotary() {
-
-  Serial.println("enteringRotary");
+  Serial.println("entering rotary menu");
   delay(150);
   currentMillis = millis();
   rotaryMillis = millis();
@@ -264,9 +250,10 @@ void rotary() {
       Serial.println(rotaryLastPos[actSetNr]);
     }
 
-
+    //Get the new Rotary Position
     rotaryNewPos[actSetNr] = encoder.getPosition() * rotarySteps[actSetNr];
 
+    //checking if Rotaryposition is too high, too low or different than the last one 
     if (rotaryNewPos[actSetNr] < rotaryMin[actSetNr]) {
       encoder.setPosition(rotaryMin[actSetNr] / rotarySteps[actSetNr]);
       rotaryNewPos[actSetNr] = rotaryMin[actSetNr];
@@ -286,7 +273,7 @@ void rotary() {
       Serial.println(currentMillis - rotaryMillis);
       (rotaryLastPos[actSetNr] = rotaryNewPos[actSetNr]);
 
-
+    //some things needed to visualize and sonificate the actual setting
       if (actSetNr == 1) {
         toneAC(NOTE_F4, volume, 200);
       }
@@ -302,13 +289,11 @@ void rotary() {
       Serial.println(brightness);
       noTone(buzzer);
       allLED(true);
-      // printLCD(actSetText[actSetNr], "");
     }
 
     if (actSetNr == 1) {
       volume = 0.1* (rotaryNewPos[1]-1);
       allLED(false);
-      //printLCD(actSetText[actSetNr], "");
     }
 
     if ((currentMillis - speedSettingMillis > 1000) && (currentMillis - speedSettingMillis < 1500)) {
@@ -317,17 +302,13 @@ void rotary() {
       for (int i = 0; i < 4; i++) {
         toneLED(i);
       }
-
       testSpeed = true;
     }
 
 
     if (actSetNr == 2) {
-      // printLCD(actSetText[actSetNr]);
       noTone(buzzer);
-      //if (currentMillis - speedSettingMillis > 2000) {
       if (testSpeed) {
-
         testSpeed = false;
       }
     }
@@ -337,6 +318,7 @@ void rotary() {
   return;
 }
 
+//changing only from Multiplayer to Singleplayer and vice versa
 void changePlayerMode() {
   multiPlayer = !multiPlayer;
   if (multiPlayer) {
@@ -347,9 +329,8 @@ void changePlayerMode() {
   delay(150);
 }
 
+//activating LED and the assigned sound
 void toneLED(int button) {
-  Serial.println(simonSpeed);
-  Serial.println(" Speed in toneLED");
   analogWrite(ledPins[button], brightness);
   toneAC(buttonTones[button], volume);
   delay(simonSpeed);
@@ -357,9 +338,8 @@ void toneLED(int button) {
   digitalWrite(ledPins[button], LOW);
 }
 
+//Playing the computer sequence
 void simonPlays() {
-  //printLCD("Simon am Zug");
-  //printLCD("", "");
   Serial.print("SimonSays: ");
   for (int i = 0; i < guess; i++) {
     Serial.print(simonSays[i]);
@@ -373,6 +353,7 @@ void simonPlays() {
 }
 
 void startupSeq() {
+  Serial.println("StartupSeq entered");
   if (guess == 0) {
     delay(2000);
     printLCD("Game starting", "");
@@ -410,6 +391,7 @@ void startupSeq() {
   }
 }
 
+//Turn on and off all LED (for visualizing in Settings)
 void allLED(bool on) {
   if (on) {
     for (int i = 0; i < 4; i++) {
@@ -423,7 +405,7 @@ void allLED(bool on) {
 }
 
 
-
+//Losing sequence of audio and LED
 void losing() {
   //Wird gespielt wenn verloren
 Serial.println(multiPlayer);
@@ -453,7 +435,12 @@ Serial.println(multiPlayer);
   delay(500);
 }
 
+//Winning sequence of audio and LED
 void winning() {  // Wird gespielt wenn Game gewonnen
+if (!startup){
+  printLCD("Cool!","");
+}
+  
   for (int thisNote = 0; thisNote < 6; thisNote++) {
     allLED(true);
     // play the next note:
